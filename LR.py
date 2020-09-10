@@ -8,248 +8,163 @@ np.random.seed(42)
 
 
 class Scaler():
-    # hint: https://machinelearningmastery.com/standardscaler-and-minmaxscaler-transforms-in-python/
     def __init__(self):
-        raise NotImplementedError
+        self.min_train = 0
+        self.max_train = 0
+        self.std_train = 0
+        self.mean_train = 0
     def __call__(self,features, is_train=False):
-        raise NotImplementedError
+        if (is_train):
+
+            self.std_train = features.std(axis=0)
+            self.mean_train = features.mean(axis=0)
+            standardize_df = (features - self.mean_train) / self.std_train
+            self.min_train = standardize_df.min(axis=0)
+            self.max_train = standardize_df.max(axis=0)
+            normalized_df = (standardize_df - self.min_train) / (
+                    self.max_train - self.min_train)
+
+        else:
+            standardize_df = (features - self.mean_train) / self.std_train
+            normalized_df = (standardize_df - self.min_train) / (
+                    self.max_train - self.min_train)
+        return normalized_df
 
 
 def get_features(csv_path,is_train=False,scaler=None):
-    '''
-    Description:
-    read input feature columns from csv file
-    manipulate feature columns, create basis functions, do feature scaling etc.
-    return a feature matrix (numpy array) of shape m x n 
-    m is number of examples, n is number of features
-    return value: numpy array
-    '''
-
-    '''
-    Arguments:
-    csv_path: path to csv file
-    is_train: True if using training data (optional)
-    scaler: a class object for doing feature scaling (optional)
-    '''
-
-    '''
-    help:
-    useful links: 
-        * https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.read_csv.html
-        * https://www.geeksforgeeks.org/python-read-csv-using-pandas-read_csv/
-    '''
-
-    raise NotImplementedError
+    df_feature = pd.read_csv(csv_path, sep=r'\s*,\s*', engine='python')
+    if 'shares' in df_feature:
+        df_feature.drop('shares',axis='columns', inplace=True)
+    df_feature=scaler(df_feature,is_train)
+    feature_bias = np.zeros(len(df_feature.index))
+    feature_bias.fill(1)
+    df_feature.insert(loc=0, column='bias', value=feature_bias)
+    return df_feature.to_numpy()
 
 def get_targets(csv_path):
-    '''
-    Description:
-    read target outputs from the csv file
-    return a numpy array of shape m x 1
-    m is number of examples
-    '''
-    raise NotImplementedError
+    df_feature = pd.read_csv(csv_path, sep=r'\s*,\s*', engine='python')
+    return df_feature['shares'].to_numpy()
      
 
-def analytical_solution(feature_matrix, targets, C=0.0):
-    '''
-    Description:
-    implement analytical solution to obtain weights
-    as described in lecture 4b
-    return value: numpy array
-    '''
-
-    '''
-    Arguments:
-    feature_matrix: numpy array of shape m x n
-    weights: numpy array of shape m x 1
-    '''
-
-    raise NotImplementedError 
+def analytical_solution(feature_matrix, targets, C=0.0001):
+    x=feature_matrix.transpose().dot( feature_matrix)
+    y=np.linalg.inv(x+C*np.identity(x.shape[0]))
+    w= y.dot(feature_matrix.T).dot(targets)
+    return w
 
 def get_predictions(feature_matrix, weights):
-    '''
-    description
-    return predictions given feature matrix and weights
-    return value: numpy array
-    '''
-
-    '''
-    Arguments:
-    feature_matrix: numpy array of shape m x n
-    weights: numpy array of shape n x 1
-    '''
-
-    raise NotImplementedError
+    predictions = feature_matrix.dot(weights)
+    return predictions
 
 def mse_loss(feature_matrix, weights, targets):
-    '''
-    Description:
-    Implement mean squared error loss function
-    return value: float (scalar)
-    '''
-
-    '''
-    Arguments:
-    feature_matrix: numpy array of shape m x n
-    weights: numpy array of shape n x 1
-    targets: numpy array of shape m x 1
-    '''
-    raise NotImplementedError
+    prediction=get_predictions(feature_matrix, weights)
+    error = targets - prediction
+    return error.T.dot(error) / len(targets)
 
 def l2_regularizer(weights):
-    '''
-    Description:
-    Implement l2 regularizer
-    return value: float (scalar)
-    '''
+    return weights.dot(weights)
 
-    '''
-    Arguments
-    weights: numpy array of shape n x 1
-    '''
-    raise NotImplementedError
+def loss_fn(feature_matrix, weights, targets, C=0.0001):
+    return mse_loss(feature_matrix,weights,targets)+C*l2_regularizer(weights)/len(targets)
 
-def loss_fn(feature_matrix, weights, targets, C=0.0):
-    '''
-    Description:
-    compute the loss function: mse_loss + C * l2_regularizer
-    '''
-
-    '''
-    Arguments:
-    feature_matrix: numpy array of shape m x n
-    weights: numpy array of shape n x 1
-    targets: numpy array of shape m x 1
-    C: weight for regularization penalty
-    return value: float (scalar)
-    '''
-
-    raise NotImplementedError
-
-def compute_gradients(feature_matrix, weights, targets, C=0.0):
-    '''
-    Description:
-    compute gradient of weights w.r.t. the loss_fn function implemented above
-    '''
-
-    '''
-    Arguments:
-    feature_matrix: numpy array of shape m x n
-    weights: numpy array of shape n x 1
-    targets: numpy array of shape m x 1
-    C: weight for regularization penalty
-    return value: numpy array
-    '''
-    raise NotImplementedError
+def compute_gradients(feature_matrix, weights, targets, C=0.0001):
+    l2_gradient = 2 * C * weights
+    mse_gradient = 2 * (feature_matrix.T.dot(feature_matrix).dot(weights) - feature_matrix.T.dot(targets))
+    return (l2_gradient + mse_gradient) / len(targets)
 
 def sample_random_batch(feature_matrix, targets, batch_size):
-    '''
-    Description
-    Batching -- Randomly sample batch_size number of elements from feature_matrix and targets
-    return a tuple: (sampled_feature_matrix, sampled_targets)
-    sampled_feature_matrix: numpy array of shape batch_size x n
-    sampled_targets: numpy array of shape batch_size x 1
-    '''
-
-    '''
-    Arguments:
-    feature_matrix: numpy array of shape m x n
-    targets: numpy array of shape m x 1
-    batch_size: int
-    '''    
-    raise NotImplementedError
+    batch=np.random.choice(feature_matrix.shape[0], batch_size, replace=False)
+    sampled_feature_matrix=feature_matrix[batch, :]
+    sampled_targets =targets[batch]
+    return (sampled_feature_matrix, sampled_targets)
     
 def initialize_weights(n):
-    '''
-    Description:
-    initialize weights to some initial values
-    return value: numpy array of shape n x 1
-    '''
-
-    '''
-    Arguments
-    n: int
-    '''
-    raise NotImplementedError
+    weights = np.zeros(n)
+    weights.fill(1000)
+    return weights
 
 def update_weights(weights, gradients, lr):
-    '''
-    Description:
-    update weights using gradient descent
-    retuen value: numpy matrix of shape nx1
-    '''
+    weights=weights-lr*gradients
+    return weights
 
-    '''
-    Arguments:
-    # weights: numpy matrix of shape nx1
-    # gradients: numpy matrix of shape nx1
-    # lr: learning rate
-    '''    
-
-    raise NotImplementedError
-
-def early_stopping(arg_1=None, arg_2=None, arg_3=None, arg_n=None):
-    # allowed to modify argument list as per your need
-    # return True or False
-    raise NotImplementedError
+def early_stopping(dev_loss, weights, patience=5):
+    if (early_stopping.min_dev_loss < dev_loss):
+        early_stopping.count += 1
+    else:
+        early_stopping.count = 0
+        early_stopping.min_dev_loss = dev_loss
+        early_stopping.min_weights = weights
+    if (early_stopping.count >= patience):
+        return True
+    return False
     
 
 def do_gradient_descent(train_feature_matrix,  
                         train_targets, 
                         dev_feature_matrix,
                         dev_targets,
-                        lr=1.0,
-                        C=0.0,
+                        lr=0.1,
+                        C=0.0001,
                         batch_size=32,
                         max_steps=10000,
-                        eval_steps=5):
-    '''
-    feel free to significantly modify the body of this function as per your needs.
-    ** However **, you ought to make use of compute_gradients and update_weights function defined above
-    return your best possible estimate of LR weights
-
-    a sample code is as follows -- 
-    '''
-    weights = initialize_weights(n)
+                        eval_steps=500):
+    weights = initialize_weights(train_feature_matrix.shape[1])
     dev_loss = mse_loss(dev_feature_matrix, weights, dev_targets)
     train_loss = mse_loss(train_feature_matrix, weights, train_targets)
+    early_stopping.count = 0
+    early_stopping.min_dev_loss = dev_loss
+    early_stopping.min_weights = weights
+    #these are arrays maintained to plot the graph
+    dev_loss_array = []
+    train_loss_array = []
+    plotindex = []
 
+    #early stopping parameter
+    patience=10
     print("step {} \t dev loss: {} \t train loss: {}".format(0,dev_loss,train_loss))
     for step in range(1,max_steps+1):
-
-        #sample a batch of features and gradients
         features,targets = sample_random_batch(train_feature_matrix,train_targets,batch_size)
-        
-        #compute gradients
         gradients = compute_gradients(features, weights, targets, C)
-        
-        #update weights
         weights = update_weights(weights, gradients, lr)
 
         if step%eval_steps == 0:
             dev_loss = mse_loss(dev_feature_matrix, weights, dev_targets)
             train_loss = mse_loss(train_feature_matrix, weights, train_targets)
+            if (early_stopping(dev_loss, weights, patience)):
+                break
+            if (dev_loss < 1000):
+                plotindex.append(step)
+                dev_loss_array.append(dev_loss)
+                train_loss_array.append(train_loss)
             print("step {} \t dev loss: {} \t train loss: {}".format(step,dev_loss,train_loss))
-
-        '''
-        implement early stopping etc. to improve performance.
-        '''
-
+    #plot graph for dev/test loss against steps
+    plt.title("dev, test Loss v/s steps")
+    plt.xlabel("steps")
+    plt.ylabel("dev/test Loss")
+    plt.plot(plotindex, dev_loss_array, color="blue")
+    plt.plot(plotindex, train_loss_array, color="green")
+    plt.show()
+    weights = early_stopping.min_weights
     return weights
 
 def do_evaluation(feature_matrix, targets, weights):
-    # your predictions will be evaluated based on mean squared error 
-    predictions = get_predictions(feature_matrix, weights)
+    #predictions = get_predictions(feature_matrix, weights)
     loss =  mse_loss(feature_matrix, weights, targets)
     return loss
 
 if __name__ == '__main__':
-    scaler = Scaler() #use of scaler is optional
+    scaler = Scaler()
     train_features, train_targets = get_features('data/train.csv',True,scaler), get_targets('data/train.csv')
     dev_features, dev_targets = get_features('data/dev.csv',False,scaler), get_targets('data/dev.csv')
 
-    a_solution = analytical_solution(train_features, train_targets, C=1e-8)
+    a_solution = analytical_solution(train_features, train_targets, C=0.0001)
+    train_predictions=get_predictions(train_features, a_solution)
+    # plot graph against predicted shares and target shares
+    plt.title("prediction v/s targets")
+    plt.xlabel("predictions")
+    plt.ylabel("targets")
+    plt.plot(train_predictions,train_targets,'o' ,color='green')
+    plt.show()
     print('evaluating analytical_solution...')
     dev_loss=do_evaluation(dev_features, dev_targets, a_solution)
     train_loss=do_evaluation(train_features, train_targets, a_solution)
@@ -260,15 +175,21 @@ if __name__ == '__main__':
                         train_targets, 
                         dev_features,
                         dev_targets,
-                        lr=1.0,
-                        C=0.0,
+                        lr=0.1,
+                        C=0.0001,
                         batch_size=32,
                         max_steps=2000000,
-                        eval_steps=5)
+                        eval_steps=500)
 
     print('evaluating iterative_solution...')
     dev_loss=do_evaluation(dev_features, dev_targets, gradient_descent_soln)
     train_loss=do_evaluation(train_features, train_targets, gradient_descent_soln)
     print('gradient_descent_soln \t train loss: {}, dev_loss: {} '.format(train_loss, dev_loss))
+    print('Increase patience parameter in gradient descent funtion to improve results\n')
+    test_features = get_features('data/test.csv', False, scaler)
+    test_predictions=get_predictions(test_features, a_solution)
+    prediction_df = pd.DataFrame(data=test_predictions, columns=["shares"])
+    prediction_df.index.name = 'instance_id'
+    prediction_df.to_csv("test_prediction_shares.csv")
     
 
