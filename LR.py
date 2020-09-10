@@ -141,6 +141,8 @@ def do_gradient_descent(train_feature_matrix,
     plt.title("dev, test Loss v/s steps")
     plt.xlabel("steps")
     plt.ylabel("dev/test Loss")
+    plt.text(50000, 600, r'Dev_Loss', color='blue')
+    plt.text(50000, 800, r'Train_Loss', color='green')
     plt.plot(plotindex, dev_loss_array, color="blue")
     plt.plot(plotindex, train_loss_array, color="green")
     plt.show()
