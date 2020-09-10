@@ -33,6 +33,14 @@ class Scaler():
 
 def get_features(csv_path,is_train=False,scaler=None):
     df_feature = pd.read_csv(csv_path, sep=r'\s*,\s*', engine='python')
+    if (is_train):
+        for column in df_feature.columns:
+            corr = df_feature[column].corr(df_feature['shares'])
+            if (np.abs(corr) < 1e-3):
+                drop_column.append(column)
+        df_feature.drop(drop_column, axis='columns', inplace=True)
+    else:
+        df_feature.drop(drop_column, axis='columns', inplace=True)
     if 'shares' in df_feature:
         df_feature.drop('shares',axis='columns', inplace=True)
     df_feature=scaler(df_feature,is_train)
@@ -80,7 +88,7 @@ def sample_random_batch(feature_matrix, targets, batch_size):
     
 def initialize_weights(n):
     weights = np.zeros(n)
-    weights.fill(1000)
+    #weights.fill(0)
     return weights
 
 def update_weights(weights, gradients, lr):
@@ -156,6 +164,7 @@ def do_evaluation(feature_matrix, targets, weights):
 
 if __name__ == '__main__':
     scaler = Scaler()
+    drop_column = []
     train_features, train_targets = get_features('data/train.csv',True,scaler), get_targets('data/train.csv')
     dev_features, dev_targets = get_features('data/dev.csv',False,scaler), get_targets('data/dev.csv')
 
