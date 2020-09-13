@@ -73,12 +73,12 @@ def l2_regularizer(weights):
     return weights.dot(weights)
 
 def loss_fn(feature_matrix, weights, targets, C=0.0001):
-    return mse_loss(feature_matrix,weights,targets)+C*l2_regularizer(weights)/len(targets)
+    return mse_loss(feature_matrix,weights,targets)+C*l2_regularizer(weights)
 
 def compute_gradients(feature_matrix, weights, targets, C=0.0001):
     l2_gradient = 2 * C * weights
-    mse_gradient = 2 * (feature_matrix.T.dot(feature_matrix).dot(weights) - feature_matrix.T.dot(targets))
-    return (l2_gradient + mse_gradient) / len(targets)
+    mse_gradient = 2 * (feature_matrix.T.dot(feature_matrix).dot(weights) - feature_matrix.T.dot(targets))/ len(targets)
+    return mse_gradient+l2_gradient
 
 def sample_random_batch(feature_matrix, targets, batch_size):
     batch=np.random.choice(feature_matrix.shape[0], batch_size, replace=False)
@@ -112,7 +112,7 @@ def do_gradient_descent(train_feature_matrix,
                         dev_feature_matrix,
                         dev_targets,
                         lr=0.1,
-                        C=0.0001,
+                        C=1e-7,
                         batch_size=32,
                         max_steps=10000,
                         eval_steps=500):
@@ -187,7 +187,7 @@ if __name__ == '__main__':
                         dev_features,
                         dev_targets,
                         lr=0.1,
-                        C=0.0001,
+                        C=1e-7,
                         batch_size=32,
                         max_steps=2000000,
                         eval_steps=500)
